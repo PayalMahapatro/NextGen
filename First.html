@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Performance Dashboard</title>
+    <!-- Chosen Palette: Calm Harmony (Slate, Blue, Green on a light background) -->
+    <!-- Application Structure Plan: The SPA is designed as a personalized dashboard for a student. The structure prioritizes immediate insights and actionable steps. The layout uses a main grid with a high-level overview (prediction chart, key factors) and a detailed, tab-based drill-down section (assessments, attendance, tips). This layered approach prevents information overload while allowing deep exploration. The user flow is: 1) See overall predicted grade. 2) Understand the trend via the line chart. 3) See 'why' via the factors chart. 4) Explore details and get help via the tabs. This is more intuitive than a linear report. -->
+    <!-- Visualization & Content Choices: Report Info: Performance data -> Goal: Show trend & predict future -> Viz: Line Chart -> Interaction: Hover for scores -> Justification: Clearly visualizes progress over time and the predicted outcome. Library: Chart.js. Report Info: Influencing factors -> Goal: Explain the prediction -> Viz: Horizontal Bar Chart -> Interaction: Hover for impact scores -> Justification: Transparently shows what drives the prediction. Library: Chart.js. Report Info: Detailed scores/attendance -> Goal: Provide granular data -> Viz: Styled HTML tables/cards -> Interaction: Tab switching -> Justification: Organizes detailed data neatly. Report Info: Need for action -> Goal: Guide student -> Viz: List of tips -> Interaction: Reading -> Justification: Directly translates data into actionable advice. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 350px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+                max-height: 400px;
+            }
+        }
+        .tab-btn.active {
+            border-color: #3b82f6;
+            color: #3b82f6;
+            background-color: #eff6ff;
+        }
+    </style>
+</head>
+<body class="text-slate-700">
+
+    <div id="app" class="min-h-screen">
+        <!-- Header -->
+        <header class="bg-white shadow-sm">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                <div class="flex justify-between items-center">
+                    <h1 class="text-2xl font-bold text-slate-800">Performance Dashboard</h1>
+                    <div class="text-right">
+                        <p class="font-semibold">Alex Doe</p>
+                        <p class="text-sm text-slate-500">Grade 11 - Science</p>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            
+            <!-- Overall Performance Snapshot -->
+            <section id="snapshot" class="mb-8">
+                <h2 class="text-xl font-semibold text-slate-800 mb-4">Your Academic Snapshot</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-white p-6 rounded-lg shadow flex flex-col justify-center items-center text-center">
+                        <p class="text-sm text-slate-500 mb-1">AI Predicted Final Grade</p>
+                        <p id="predicted-grade" class="text-5xl font-bold text-blue-600">88%</p>
+                        <p id="risk-level" class="mt-2 text-sm font-medium text-green-600 bg-green-100 px-3 py-1 rounded-full">Low Risk</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow flex flex-col justify-center items-center text-center">
+                        <p class="text-sm text-slate-500 mb-1">Overall Attendance</p>
+                        <p id="attendance-stat" class="text-5xl font-bold text-slate-800">95%</p>
+                        <p class="mt-2 text-sm text-slate-500">Excellent</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow flex flex-col justify-center items-center text-center">
+                        <p class="text-sm text-slate-500 mb-1">Current Average Score</p>
+                        <p id="average-score" class="text-5xl font-bold text-slate-800">86%</p>
+                        <p class="mt-2 text-sm text-slate-500">Across all assessments</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Performance Prediction and Key Factors -->
+            <section id="prediction-analysis" class="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
+                <div class="lg:col-span-3 bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-lg font-semibold text-slate-800 mb-1">Performance Trajectory</h3>
+                    <p class="text-sm text-slate-500 mb-4">This chart shows your assessment scores over time and the predicted final outcome.</p>
+                    <div class="chart-container h-[350px]">
+                        <canvas id="performanceChart"></canvas>
+                    </div>
+                </div>
+                <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-lg font-semibold text-slate-800 mb-1">Key Prediction Factors</h3>
+                     <p class="text-sm text-slate-500 mb-4">How different areas are influencing your predicted grade.</p>
+                    <div class="chart-container h-[350px]">
+                        <canvas id="factorsChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Detailed Insights Section -->
+            <section id="detailed-insights" class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold text-slate-800 mb-4">Detailed Insights & Actions</h2>
+                <!-- Tabs -->
+                <div class="border-b border-slate-200 mb-6">
+                    <nav class="-mb-px flex space-x-6" id="tabs">
+                        <button data-tab="assessments" class="tab-btn active whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm">Assessments</button>
+                        <button data-tab="attendance" class="tab-btn whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm">Attendance</button>
+                        <button data-tab="tips" class="tab-btn whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm">Personalized Tips</button>
+                    </nav>
+                </div>
+
+                <!-- Tab Content -->
+                <div id="tab-content">
+                    <div id="assessments-content" class="tab-pane active">
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-slate-200">
+                                <thead class="bg-slate-50">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Assessment</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Date</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Your Score</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Class Average</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Weight</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="assessments-table-body" class="bg-white divide-y divide-slate-200">
+                                    <!-- Rows will be injected by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div id="attendance-content" class="tab-pane hidden">
+                        <p class="text-slate-600">Your excellent attendance of <strong class="text-slate-800">95%</strong> is positively impacting your performance. Keep it up!</p>
+                        <p class="text-sm text-slate-500 mt-2">Consistent attendance is strongly correlated with higher academic achievement.</p>
+                    </div>
+                    <div id="tips-content" class="tab-pane hidden">
+                        <ul id="tips-list" class="space-y-4">
+                            <!-- Tips will be injected by JS -->
+                        </ul>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    const studentData = {
+        name: "Alex Doe",
+        predictedGrade: 88,
+        risk: "Low",
+        attendance: 95,
+        averageScore: 86,
+        assessments: [
+            { name: "Unit 1 Quiz", date: "2025-02-15", score: 82, classAvg: 78, weight: 10 },
+            { name: "Lab Report 1", date: "2025-03-01", score: 90, classAvg: 85, weight: 15 },
+            { name: "Mid-Term Exam", date: "2025-03-20", score: 85, classAvg: 80, weight: 30 },
+            { name: "Unit 2 Quiz", date: "2025-04-10", score: 88, classAvg: 84, weight: 10 },
+            { name: "Project Proposal", date: "2025-04-25", score: 92, classAvg: 88, weight: 15 },
+        ],
+        factors: {
+            "Internal Assessments": 90,
+            "Attendance": 95,
+            "Previous Academics": 85,
+            "Engagement": 80
+        },
+        tips: [
+            { icon: '✅', text: "Your scores on practicals (Lab Reports, Projects) are a major strength. Continue to focus on hands-on application.", category: "strength" },
+            { icon: '💡', text: "Reviewing quiz material before larger exams like the mid-term could boost your score by a few points. You performed well, but there's room for improvement on exam strategy.", category: "opportunity" },
+            { icon: '🏆', text: "Your attendance is excellent! This consistency is a key factor in your strong performance. Keep it up!", category: "strength" }
+        ]
+    };
+
+    function populateDashboard() {
+        document.getElementById('predicted-grade').textContent = `${studentData.predictedGrade}%`;
+        const riskLevelEl = document.getElementById('risk-level');
+        riskLevelEl.textContent = `${studentData.risk} Risk`;
+        if (studentData.risk === 'Low') {
+            riskLevelEl.className = 'mt-2 text-sm font-medium text-green-600 bg-green-100 px-3 py-1 rounded-full';
+        } else if (studentData.risk === 'Medium') {
+            riskLevelEl.className = 'mt-2 text-sm font-medium text-yellow-600 bg-yellow-100 px-3 py-1 rounded-full';
+        } else {
+            riskLevelEl.className = 'mt-2 text-sm font-medium text-red-600 bg-red-100 px-3 py-1 rounded-full';
+        }
+        document.getElementById('attendance-stat').textContent = `${studentData.attendance}%`;
+        document.getElementById('average-score').textContent = `${studentData.averageScore}%`;
+
+        const assessmentsTableBody = document.getElementById('assessments-table-body');
+        assessmentsTableBody.innerHTML = '';
+        studentData.assessments.forEach(item => {
+            const row = document.createElement('tr');
+            const scoreColor = item.score >= item.classAvg ? 'text-green-600' : 'text-red-600';
+            row.innerHTML = `
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">${item.name}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${item.date}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold ${scoreColor}">${item.score}%</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${item.classAvg}%</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${item.weight}%</td>
+            `;
+            assessmentsTableBody.appendChild(row);
+        });
+
+        const tipsList = document.getElementById('tips-list');
+        tipsList.innerHTML = '';
+        studentData.tips.forEach(tip => {
+            const li = document.createElement('li');
+            li.className = 'flex items-start p-4 rounded-lg';
+            li.innerHTML = `
+                <div class="text-2xl mr-4">${tip.icon}</div>
+                <div>
+                    <p class="text-slate-700">${tip.text}</p>
+                </div>
+            `;
+             if (tip.category === "strength") {
+                li.classList.add('bg-green-50');
+            } else {
+                li.classList.add('bg-blue-50');
+            }
+            tipsList.appendChild(li);
+        });
+    }
+
+    function renderCharts() {
+        const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+        const assessmentScores = studentData.assessments.map(a => ({x: new Date(a.date).valueOf(), y: a.score}));
+        const predictedPoint = {x: new Date("2025-05-25").valueOf(), y: studentData.predictedGrade};
+
+        new Chart(performanceCtx, {
+            type: 'line',
+            data: {
+                datasets: [
+                    {
+                        label: 'Your Score',
+                        data: assessmentScores,
+                        borderColor: '#3b82f6',
+                        backgroundColor: '#3b82f6',
+                        tension: 0.1,
+                        fill: false
+                    },
+                    {
+                        label: 'Predicted',
+                        data: [assessmentScores[assessmentScores.length - 1], predictedPoint],
+                        borderColor: '#22c55e',
+                        backgroundColor: '#22c55e',
+                        borderDash: [5, 5],
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'month'
+                        },
+                        title: {
+                            display: true,
+                            text: 'Date'
+                        }
+                    },
+                    y: {
+                        beginAtZero: false,
+                        min: 50,
+                        max: 100,
+                        title: {
+                            display: true,
+                            text: 'Score (%)'
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    }
+                }
+            }
+        });
+
+        const factorsCtx = document.getElementById('factorsChart').getContext('2d');
+        new Chart(factorsCtx, {
+            type: 'bar',
+            data: {
+                labels: Object.keys(studentData.factors),
+                datasets: [{
+                    label: 'Impact Score',
+                    data: Object.values(studentData.factors),
+                    backgroundColor: [
+                        'rgba(59, 130, 246, 0.7)',
+                        'rgba(34, 197, 94, 0.7)',
+                        'rgba(234, 179, 8, 0.7)',
+                        'rgba(139, 92, 246, 0.7)'
+                    ],
+                    borderColor: [
+                        '#3b82f6',
+                        '#22c55e',
+                        '#eab308',
+                        '#8b5cf6'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        max: 100,
+                        title: {
+                            display: true,
+                            text: 'Impact Score'
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function setupTabs() {
+        const tabs = document.getElementById('tabs');
+        const panes = document.querySelectorAll('.tab-pane');
+
+        tabs.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON') {
+                const targetTab = e.target.dataset.tab;
+
+                document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+
+                panes.forEach(pane => {
+                    if (pane.id === `${targetTab}-content`) {
+                        pane.classList.remove('hidden');
+                    } else {
+                        pane.classList.add('hidden');
+                    }
+                });
+            }
+        });
+    }
+
+    populateDashboard();
+    renderCharts();
+    setupTabs();
+});
+</script>
+</body>
+</html>
